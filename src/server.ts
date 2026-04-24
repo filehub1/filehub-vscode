@@ -219,6 +219,7 @@ export class FilehubServer {
           this.openInEditor(fp);
           return sendJson(res, 200, { success: true });
         }
+        if (!fp) return sendJson(res, 400, { success: false, error: 'Missing path' });
         return sendJson(res, 200, { success: openFile(fp) });
       }
       if (p === '/api/open-in-explorer' && req.method === 'POST') {
@@ -226,6 +227,7 @@ export class FilehubServer {
         const isLanRequest = this.lanEnabled && host.includes(':' + this.lanPort);
         if (isLanRequest) return sendJson(res, 403, { success: false });
         const body = await readBody(req);
+        if (!body.path) return sendJson(res, 400, { success: false, error: 'Missing path' });
         return sendJson(res, 200, { success: openExplorer(body.path) });
       }
       if (p === '/api/open-terminal' && req.method === 'POST') {
@@ -234,6 +236,7 @@ export class FilehubServer {
         if (isLanRequest) return sendJson(res, 403, { success: false });
         const body = await readBody(req);
         const target = body.workDir || body.path;
+        if (!target) return sendJson(res, 400, { success: false, error: 'Missing path' });
         const dir = target && fs.existsSync(target) && fs.statSync(target).isDirectory() ? target : (target ? path.dirname(target) : '');
         return sendJson(res, 200, { success: dir ? openTerminal(dir) : false });
       }

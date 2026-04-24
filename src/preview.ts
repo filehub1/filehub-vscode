@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import yauzl from 'yauzl';
+import * as yauzl from 'yauzl';
 
 const TEXT_EXTS = new Set([
   '.txt','.md','.mdx','.rst','.json','.jsonc','.js','.mjs','.cjs','.ts','.jsx','.tsx',

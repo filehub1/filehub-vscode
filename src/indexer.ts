@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import path from 'path';
 import fs from 'fs/promises';
+import { nativeEnumerate } from './native-indexer';
 
 interface FileEntry {
   name: string;
@@ -71,7 +72,19 @@ export class FileIndexService extends EventEmitter {
     this.isIndexing = true;
     const newFiles: FileEntry[] = [];
     try {
-      for (const dir of topDirs) await this.walk(dir, newFiles);
+      // Try native fast enumeration first, fallback to TS walk
+      let usedNative = false;
+      try {
+        const entries = await nativeEnumerate(topDirs, this.config.excludePatterns);
+        for (const e of entries) {
+          newFiles.push({ name: e.name, path: e.path, nameLower: e.name.toLowerCase(), size: e.size, modified: e.modified, isDirectory: e.isDirectory });
+        }
+        usedNative = true;
+      } catch { /* fallback */ }
+
+      if (!usedNative) {
+        for (const dir of topDirs) await this.walk(dir, newFiles);
+      }
       this.files = newFiles;
       this.isIndexing = false;
       this.emit('index-complete', { fileCount: this.files.length });
