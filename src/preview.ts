@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import yauzl from 'yauzl';
 
 const TEXT_EXTS = new Set([
   '.txt','.md','.mdx','.rst','.json','.jsonc','.js','.mjs','.cjs','.ts','.jsx','.tsx',
@@ -48,7 +49,6 @@ function stripXml(xml: string): string {
 }
 
 async function extractOpenXml(filePath: string, ext: string): Promise<string | null> {
-  const yauzl = require('yauzl');
   return new Promise(resolve => {
     yauzl.open(filePath, { lazyEntries: true }, (err: any, zip: any) => {
       if (err || !zip) return resolve(null);
