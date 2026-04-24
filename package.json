@@ -1,0 +1,54 @@
+{
+  "name": "filehub-vscode",
+  "displayName": "FileHub",
+  "description": "Instant file search and preview for VSCode",
+  "version": "0.1.0",
+  "publisher": "exiahuang",
+  "repository": { "type": "git", "url": "https://github.com/filehub1/filehub-vscode" },
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "filehub.open", "title": "FileHub: Open" }
+    ],
+    "keybindings": [
+      { "command": "filehub.open", "key": "ctrl+shift+f", "mac": "cmd+shift+f" }
+    ],
+    "configuration": {
+      "title": "FileHub",
+      "properties": {
+        "filehub.indexedDirectories": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Directories to index. Defaults to workspace folders."
+        },
+        "filehub.excludePatterns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["node_modules", ".git", "dist", "build", ".cache", "*.log"],
+          "description": "Patterns to exclude from indexing."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup src/extension.ts --format cjs --external vscode --no-dts --out-dir dist",
+    "watch": "tsup src/extension.ts --format cjs --external vscode --no-dts --out-dir dist --watch",
+    "vscode:prepublish": "npm run build"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.1",
+    "yauzl": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@types/yauzl": "^2.10.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.3.3"
+  }
+}
