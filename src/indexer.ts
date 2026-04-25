@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import path from 'path';
 import fs from 'fs/promises';
-import { nativeEnumerate } from './native-indexer';
+import { nativeEnumerate, clearNativeCache } from './native-indexer';
 
 interface FileEntry {
   name: string;
@@ -60,8 +60,11 @@ export class FileIndexService extends EventEmitter {
 
   async rebuildIndex(directories?: string[]): Promise<IndexStatus> {
     if (this.isIndexing) return this.getStatus();
+    const startTime = Date.now();
     const dirs = directories ?? this.config.indexedDirectories;
     if (directories) this.config.indexedDirectories = dirs;
+
+    clearNativeCache();
 
     // Remove subdirectories already covered by a parent
     const normalized = dirs.map(d => d.replace(/[\\/]+$/, '') + path.sep);
@@ -87,7 +90,9 @@ export class FileIndexService extends EventEmitter {
       }
       this.files = newFiles;
       this.isIndexing = false;
-      this.emit('index-complete', { fileCount: this.files.length });
+      const elapsed = Date.now() - startTime;
+      console.log('[indexer] rebuild complete: ' + this.files.length + ' files in ' + elapsed + 'ms');
+      this.emit('index-complete', { fileCount: this.files.length, elapsed });
       return { status: 'idle', fileCount: this.files.length, indexedDirectories: dirs };
     } catch (e) {
       this.isIndexing = false;

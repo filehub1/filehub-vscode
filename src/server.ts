@@ -87,6 +87,9 @@ export class FilehubServer {
   constructor(wwwroot: string, config: AppConfig) {
     this.wwwroot = wwwroot;
     this.indexService = new FileIndexService(config);
+    this.indexService.on('index-complete', (data: any) => {
+      this.onIndexComplete?.(data.fileCount, data.elapsed);
+    });
     this.server = http.createServer((req, res) => this.handle(req, res));
   }
 
@@ -96,6 +99,8 @@ export class FilehubServer {
     this.indexService.rebuildIndex().catch(() => {});
     return this.port;
   }
+
+  public onIndexComplete?: (fileCount: number, elapsed: number) => void;
 
   enableLan() {
     if (this.lanProxy) return;

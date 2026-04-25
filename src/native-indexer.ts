@@ -22,7 +22,7 @@ function getAddon(): any {
   const base = process.env.FILEHUB_EXTENSION_PATH;
   if (!base) return null;
   const candidates = [
-    path.join(base, 'addon', 'everything_addon.node'),
+    path.join(base, 'addon', 'filehub_addon.node'),
   ];
   for (const p of candidates) {
     try {
@@ -35,10 +35,28 @@ function getAddon(): any {
 
 export async function nativeEnumerate(dirs: string[], excludePatterns: string[]): Promise<NativeEntry[]> {
   const addon = getAddon();
+  const start = Date.now();
   if (platform === 'win32' && addon?.indexDirectory) {
-    return enumerateWithAddon(dirs, excludePatterns);
+    log('[native-indexer] enumerateWithAddon start');
+    const result = await enumerateWithAddon(dirs, excludePatterns);
+    log(`[native-indexer] enumerateWithAddon done: ${result.length} files in ${Date.now() - start}ms`);
+    return result;
   }
-  return enumerateWithFdir(dirs, excludePatterns);
+  log('[native-indexer] enumerateWithFdir start');
+  const fdirResult = await enumerateWithFdir(dirs, excludePatterns);
+  log(`[native-indexer] enumerateWithFdir done: ${fdirResult.length} files in ${Date.now() - start}ms`);
+  return fdirResult;
+}
+
+function log(msg: string) {
+  console.log(msg);
+}
+
+export function clearNativeCache() {
+  const addon = getAddon();
+  if (addon?.clearCache) {
+    addon.clearCache();
+  }
 }
 
 function enumerateWithAddon(dirs: string[], excludePatterns: string[]): Promise<NativeEntry[]> {

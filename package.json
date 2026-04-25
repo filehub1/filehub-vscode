@@ -2,7 +2,7 @@
   "name": "filehub-vscode",
   "displayName": "FileHub",
   "description": "Instant file search and preview for VSCode",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "exiahuang",
   "repository": {
     "type": "git",
@@ -63,7 +63,7 @@
   "scripts": {
     "build": "tsup",
     "build:addon": "cd ../filehub-server/src/addon && npm install && npx node-gyp rebuild",
-    "build:full": "npm run build:addon && xcopy /Y /I ..\\filehub-server\\src\\addon\\build\\Release\\everything_addon.node addon\\ && npm run build",
+    "build:full": "npm run build:addon && xcopy /Y /I ..\\filehub-server\\src\\addon\\build\\Release\\filehub_addon.node addon\\ && npm run build",
     "watch": "tsup --watch",
     "vscode:prepublish": "npm run build"
   },

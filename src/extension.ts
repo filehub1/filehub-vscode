@@ -7,6 +7,13 @@ import { AppConfig } from './indexer';
 
 let server: FilehubServer | undefined;
 let panel: vscode.WebviewPanel | undefined;
+let outputChannel: vscode.OutputChannel;
+
+function log(msg: string) {
+  const line = `[${new Date().toISOString()}] ${msg}`;
+  outputChannel.appendLine(line);
+  console.log(line);
+}
 
 const DEFAULT_EXCLUDE = ['node_modules', '.git', 'dist', 'build', '.cache', '*.log'];
 
@@ -33,14 +40,14 @@ function getWwwroot(context: vscode.ExtensionContext): string {
     path.join(context.extensionPath, '..', 'filehub-server', 'dist', 'renderer'),
     path.join(os.homedir(), 'ai', 'exiahuang', 'filehub1', 'filehub-server', 'dist', 'renderer'),
   ];
-  console.log('filehub: candidates:', JSON.stringify(candidates));
+  log('candidates: ' + JSON.stringify(candidates));
   for (const c of candidates) {
     if (fs.existsSync(path.join(c, 'index.html'))) {
-      console.log('filehub: found wwwroot:', c);
+      log('found wwwroot: ' + c);
       return c;
     }
   }
-  console.log('filehub: no wwwroot found, using:', candidates[0]);
+  log('no wwwroot found, using: ' + candidates[0]);
   return candidates[0];
 }
 
@@ -48,16 +55,23 @@ async function ensureServer(context: vscode.ExtensionContext): Promise<FilehubSe
   if (!server) {
     const wwwroot = getWwwroot(context);
     const config = getConfig();
-    console.log('filehub: initializing with config:', JSON.stringify(config));
+    log('initializing with config: ' + JSON.stringify(config));
     server = new FilehubServer(wwwroot, config);
     server.openInEditor = (filePath: string) => {
-      console.log('filehub: openInEditor called with:', JSON.stringify(filePath));
+      log('openInEditor called with: ' + filePath);
       if (!filePath || !filePath.trim()) return;
       try {
         vscode.window.showTextDocument(vscode.Uri.file(filePath));
       } catch (e) {
-        console.error('showTextDocument error:', e);
+        outputChannel.appendLine('showTextDocument error: ' + e);
       }
+    };
+    server.onConfigSaved = (cfg) => {
+      log('config saved: ' + JSON.stringify(cfg));
+      log('triggering rebuild index...');
+    };
+    server.onIndexComplete = (fileCount, elapsed) => {
+      log('index rebuild complete: ' + fileCount + ' files in ' + elapsed + 'ms');
     };
     await server.start();
     context.subscriptions.push({ dispose: () => { server?.dispose(); server = undefined; } });
@@ -66,7 +80,9 @@ async function ensureServer(context: vscode.ExtensionContext): Promise<FilehubSe
 }
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-  console.log('filehub: activate starting');
+  outputChannel = vscode.window.createOutputChannel('FileHub');
+  outputChannel.show();
+  log('activate starting');
   // console.log('vscode workspace:', vscode.workspace);
   // console.log('vscode workspaceFolders:', vscode.workspace.workspaceFolders);
   try {
@@ -81,7 +97,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       })
     );
   } catch (e) {
-    console.error('filehub activate error:', e);
+    log('activate error: ' + e);
     throw e;
   }
 }
@@ -121,6 +137,7 @@ async function openPanel(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+  outputChannel?.dispose();
   server?.dispose();
   server = undefined;
 }
