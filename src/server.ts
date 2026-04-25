@@ -81,6 +81,7 @@ export class FilehubServer {
   public lanPort = 0;
   public lanEnabled = false;
   private lanProxy?: import('net').Server;
+  private sseClients: Set<http.ServerResponse> = new Set();
   public openInEditor?: (filePath: string) => void;
   public onConfigSaved?: (cfg: AppConfig) => void;
 
@@ -89,8 +90,16 @@ export class FilehubServer {
     this.indexService = new FileIndexService(config);
     this.indexService.on('index-complete', (data: any) => {
       this.onIndexComplete?.(data.fileCount, data.elapsed, data.engine);
+      this.broadcastSSE({ type: 'index-complete', fileCount: data.fileCount, elapsed: data.elapsed, engine: data.engine });
     });
     this.server = http.createServer((req, res) => this.handle(req, res));
+  }
+
+  private broadcastSSE(data: object) {
+    const msg = `data: ${JSON.stringify(data)}\n\n`;
+    for (const client of this.sseClients) {
+      try { client.write(msg); } catch { this.sseClients.delete(client); }
+    }
   }
 
   async start(): Promise<number> {
@@ -146,6 +155,14 @@ export class FilehubServer {
     try {
       if (p === '/api/health') return sendJson(res, 200, { ok: true });
       if (p === '/api/status') return sendJson(res, 200, this.indexService.getStatus());
+
+      if (p === '/api/events') {
+        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive', 'Access-Control-Allow-Origin': '*' });
+        res.write(': connected\n\n');
+        this.sseClients.add(res);
+        req.on('close', () => this.sseClients.delete(res));
+        return;
+      }
 
       if (p === '/api/search') {
         const q = url.searchParams.get('query') || '';

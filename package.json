@@ -2,7 +2,7 @@
   "name": "filehub-vscode",
   "displayName": "FileHub",
   "description": "Instant file search and preview for VSCode",
-  "version": "0.1.2",
+  "version": "1.0.2",
   "publisher": "exiahuang",
   "repository": {
     "type": "git",

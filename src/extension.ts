@@ -73,6 +73,7 @@ async function ensureServer(context: vscode.ExtensionContext): Promise<FilehubSe
     };
     server.onIndexComplete = (fileCount, elapsed, engine) => {
       log('index rebuild complete: ' + fileCount + ' files in ' + elapsed + 'ms, engine: ' + (engine ?? 'unknown'));
+      panel?.webview.postMessage({ type: 'index-complete', fileCount, elapsed, engine });
     };
     await server.start();
     context.subscriptions.push({ dispose: () => { server?.dispose(); server = undefined; } });
@@ -93,7 +94,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.workspace.onDidChangeConfiguration(e => {
         if (e.affectsConfiguration('filehub') && server) {
           server.updateConfig(getConfig());
-          server.rebuildIndex().catch(() => {});
         }
       })
     );
@@ -131,10 +131,26 @@ async function openPanel(context: vscode.ExtensionContext) {
   }
   window.addEventListener('focus', focusApp);
   f.addEventListener('load', () => setTimeout(focusApp, 100));
+  // Forward messages from VSCode extension to iframe
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type && e.data.type !== 'filehub-focus') {
+      if (e.data.source === 'iframe' && e.data.type === 'copy') {
+        // Forward copy request from iframe to VSCode extension
+        acquireVsCodeApi().postMessage(e.data);
+      } else {
+        f.contentWindow.postMessage(e.data, '*');
+      }
+    }
+  });
 </script>
 </body></html>`;
 
   panel.onDidDispose(() => { panel = undefined; });
+  panel.webview.onDidReceiveMessage(msg => {
+    if (msg.type === 'copy' && typeof msg.text === 'string') {
+      vscode.env.clipboard.writeText(msg.text);
+    }
+  });
 }
 
 export function deactivate() {
