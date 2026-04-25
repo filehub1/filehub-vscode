@@ -33,7 +33,7 @@ function getAddon(): any {
   return null;
 }
 
-export async function nativeEnumerate(dirs: string[], excludePatterns: string[]): Promise<NativeEntry[]> {
+export async function nativeEnumerate(dirs: string[], excludePatterns: string[], forceNative = false): Promise<NativeEntry[]> {
   const addon = getAddon();
   const start = Date.now();
   if (platform === 'win32' && addon?.indexDirectory) {
@@ -41,6 +41,9 @@ export async function nativeEnumerate(dirs: string[], excludePatterns: string[])
     const result = await enumerateWithAddon(dirs, excludePatterns);
     log(`[native-indexer] enumerateWithAddon done: ${result.length} files in ${Date.now() - start}ms`);
     return result;
+  }
+  if (forceNative) {
+    throw new Error('[native-indexer] win-api addon not available (platform=' + platform + ', addon=' + !!addon + ')');
   }
   log('[native-indexer] enumerateWithFdir start');
   const fdirResult = await enumerateWithFdir(dirs, excludePatterns);
@@ -60,35 +63,22 @@ export function clearNativeCache() {
 }
 
 function enumerateWithAddon(dirs: string[], excludePatterns: string[]): Promise<NativeEntry[]> {
-  const excludeRegexes = excludePatterns.map(p => {
-    const escaped = p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.');
-    return new RegExp(`^${escaped}$`, 'i');
-  });
-
-  function shouldExclude(name: string): boolean {
-    if (name.startsWith('.')) return true;
-    return excludeRegexes.some(r => r.test(name));
-  }
-
+  const addon = getAddon();
   const results: NativeEntry[] = [];
   for (const dir of dirs) {
     try {
-      const entries: any[] = addon.indexDirectory(dir);
+      const entries: any[] = addon.indexDirectory(dir, excludePatterns);
       for (const e of entries) {
-        const name: string = e.name;
-        const fullPath: string = e.path;
-        if (shouldExclude(name)) continue;
-        // addon modified is Windows FILETIME (100ns intervals since 1601-01-01)
         const modifiedMs = e.modified ? Math.round(e.modified / 10000 - 11644473600000) : 0;
         results.push({
-          name,
-          path: fullPath,
+          name: e.name,
+          path: e.path,
           size: e.size || 0,
           modified: modifiedMs,
           isDirectory: !!e.isDirectory
         });
       }
-    } catch { throw new Error('addon failed'); }
+    } catch (e) { throw new Error('addon failed: ' + e); }
   }
   return Promise.resolve(results);
 }

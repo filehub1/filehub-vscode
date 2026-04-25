@@ -29,6 +29,7 @@ export interface IndexStatus {
 export interface AppConfig {
   indexedDirectories: string[];
   excludePatterns: string[];
+  indexEngine?: 'auto' | 'win-api' | 'nodejs';
 }
 
 export class FileIndexService extends EventEmitter {
@@ -77,13 +78,19 @@ export class FileIndexService extends EventEmitter {
     try {
       // Try native fast enumeration first, fallback to TS walk
       let usedNative = false;
-      try {
-        const entries = await nativeEnumerate(topDirs, this.config.excludePatterns);
-        for (const e of entries) {
-          newFiles.push({ name: e.name, path: e.path, nameLower: e.name.toLowerCase(), size: e.size, modified: e.modified, isDirectory: e.isDirectory });
+      const engine = this.config.indexEngine ?? 'auto';
+      if (engine !== 'nodejs') {
+        try {
+          const entries = await nativeEnumerate(topDirs, this.config.excludePatterns, engine === 'win-api');
+          for (const e of entries) {
+            newFiles.push({ name: e.name, path: e.path, nameLower: e.name.toLowerCase(), size: e.size, modified: e.modified, isDirectory: e.isDirectory });
+          }
+          usedNative = true;
+        } catch (e) {
+          console.error('[indexer] native enumeration failed:', e);
+          if (engine === 'win-api') throw e; // don't fallback if explicitly requested
         }
-        usedNative = true;
-      } catch { /* fallback */ }
+      }
 
       if (!usedNative) {
         for (const dir of topDirs) await this.walk(dir, newFiles);
@@ -91,8 +98,8 @@ export class FileIndexService extends EventEmitter {
       this.files = newFiles;
       this.isIndexing = false;
       const elapsed = Date.now() - startTime;
-      console.log('[indexer] rebuild complete: ' + this.files.length + ' files in ' + elapsed + 'ms');
-      this.emit('index-complete', { fileCount: this.files.length, elapsed });
+      console.log('[indexer] rebuild complete: ' + this.files.length + ' files in ' + elapsed + 'ms, engine: ' + (usedNative ? 'native-addon' : 'fdir'));
+      this.emit('index-complete', { fileCount: this.files.length, elapsed, engine: usedNative ? 'native-addon' : 'fdir' });
       return { status: 'idle', fileCount: this.files.length, indexedDirectories: dirs };
     } catch (e) {
       this.isIndexing = false;

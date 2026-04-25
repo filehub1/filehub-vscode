@@ -34,6 +34,17 @@
     "configuration": {
       "title": "FileHub",
       "properties": {
+        "filehub.indexEngine": {
+          "type": "string",
+          "enum": ["auto", "win-api", "nodejs"],
+          "enumDescriptions": [
+            "Auto: use Win32 native API on Windows, fallback to Node.js (fdir)",
+            "Win32 API: always use native filehub_addon (Windows only)",
+            "Node.js: always use fdir (cross-platform)"
+          ],
+          "default": "auto",
+          "description": "File indexing engine."
+        },
         "filehub.indexedDirectories": {
           "type": "array",
           "items": {

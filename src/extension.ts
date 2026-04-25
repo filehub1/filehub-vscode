@@ -24,13 +24,14 @@ function getConfig(): AppConfig {
   const excludePatterns: string[] = (cfg.get<string[]>('excludePatterns') ?? []).length > 0
     ? cfg.get<string[]>('excludePatterns')!
     : DEFAULT_EXCLUDE;
+  const indexEngine = cfg.get<'auto' | 'win-api' | 'nodejs'>('indexEngine') ?? 'auto';
   if (dirs.length === 0 && vscode.workspace.workspaceFolders) {
     const validFolders = vscode.workspace.workspaceFolders
       .map(f => f.uri.fsPath)
       .filter((p): p is string => !!p && !!p.trim());
     dirs.push(...validFolders);
   }
-  return { indexedDirectories: dirs, excludePatterns };
+  return { indexedDirectories: dirs, excludePatterns, indexEngine };
 }
 
 function getWwwroot(context: vscode.ExtensionContext): string {
@@ -70,8 +71,8 @@ async function ensureServer(context: vscode.ExtensionContext): Promise<FilehubSe
       log('config saved: ' + JSON.stringify(cfg));
       log('triggering rebuild index...');
     };
-    server.onIndexComplete = (fileCount, elapsed) => {
-      log('index rebuild complete: ' + fileCount + ' files in ' + elapsed + 'ms');
+    server.onIndexComplete = (fileCount, elapsed, engine) => {
+      log('index rebuild complete: ' + fileCount + ' files in ' + elapsed + 'ms, engine: ' + (engine ?? 'unknown'));
     };
     await server.start();
     context.subscriptions.push({ dispose: () => { server?.dispose(); server = undefined; } });

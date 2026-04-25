@@ -4,19 +4,16 @@ export default defineConfig({
   entry: ['src/extension.ts'],
   format: ['cjs'],
   outDir: 'dist',
-  external: ['vscode', 'fdir'],
-  noExternal: [/^(?!vscode|fdir).*/],
+  external: ['vscode'],
+  noExternal: [/^(?!vscode).*/],
   dts: false,
   splitting: false,
   sourcemap: false,
   clean: false,
-  define: {
-    'import.meta.url': 'undefined',
-  },
   esbuildOptions(options) {
     options.define = {
       ...options.define,
-      'import.meta.url': JSON.stringify(''),
+      'import.meta.url': '__filename',
     };
   },
 });
